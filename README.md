@@ -34,6 +34,9 @@ class for including the functionality into your stack at the global level.
 A utility for converting your old `compliance_map()` Hiera data has also been
 included in the `utils` directory.
 
+A custom Hiera backend called `compliance_map` is also available that allows
+for the **enforcement** of the compliance map where applicable.
+
 ## Upgrading
 
 A utility script, `compliance_map_migrate` has been included in the `utils`
@@ -221,6 +224,99 @@ if $::circumstance {
   compliance_map('my_policy','POLICY_SECTION_ID','Note about this section')
   ...code that applies POLICY_SECTION_ID...
 }
+```
+
+## Enforcement
+
+You can use the custom Hiera backend, `compliance_map`, to actually enforce the
+values set in the compliance map data structure.
+
+### Installing the Backend
+
+Though the Puppet server **should** pick the backend up from the module, we
+have seen some issues with this over time and have had to drop the
+`compliance_map_backend.rb` file directly into
+`/opt/puppetlabs/puppet/lib/ruby/vendor_ruby/hiera/backend` and then restart
+the Puppet server.
+
+### Activating the Backend
+
+The backend is essentially a special YAML backend and can be loaded just like
+any other Hiera backend.
+
+The following two examples provide methods by which you may make the values
+authoritative or overridable (recommended).
+
+**Hiera.yaml - Overridable**
+
+```yaml
+:backends:
+  - 'yaml'
+  - 'compliance_map'
+:yaml:
+  :datadir: '/path/to/your/hieradata'
+:compliance_map:
+  :datadir: '/path/to/your/hieradata'
+:hierarchy:
+  "compliance_profiles/%{compliance_profile}"
+  "global"
+```
+
+**Hiera.yaml - Authoritative**
+
+```yaml
+:backends:
+  - 'compliance_map'
+  - 'yaml'
+:yaml:
+  :datadir: '/path/to/your/hieradata'
+:compliance_map:
+  :datadir: '/path/to/your/hieradata'
+:hierarchy:
+  "compliance_profiles/%{compliance_profile}"
+  "global"
+```
+
+### Selecting Which Profile to Enforce
+
+You may enforce one or more profiles in parallel by setting the globally scoped
+variable `$enforce_compliance_profile`.
+
+If you enforce multiple profiles, they should be specified as an Array and
+items at the beginning of the Array will override later items.
+
+#### Example 1 - Standard Usage
+
+**Manifest**
+
+```ruby
+class foo (
+  $var_one => 'one',
+  $var_two => 'two'
+) {
+  notify { 'Sample Class': }
+}
+
+$enforce_compliance_profile = 'my_policy'
+
+include '::foo'
+```
+
+#### Example 2 - Multi-Profile
+
+**Manifest**
+
+```ruby
+class foo (
+  $var_one => 'one',
+  $var_two => 'two'
+) {
+  notify { 'Sample Class': }
+}
+
+$enforce_compliance_profile = ['my_policy', 'my_less_important_policy']
+
+include '::foo'
 ```
 
 ## Limitations
