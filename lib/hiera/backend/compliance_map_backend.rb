@@ -39,9 +39,23 @@ class Hiera
           if !compliance_profile_to_enforce || compliance_profile_to_enforce.empty?
             begin
               # Puppet 4
-              global_profile_list = Array(scope.real.call_function('lookup',['enforce_compliance_profile']))
+              global_profile_list = Array(scope.real.call_function('lookup',
+                [
+                  'enforce_compliance_profile',
+                  {
+                    'default_value' => []
+                  }
+                ]
+              ))
 
-              module_profile_list = Array(scope.real.call_function('lookup',['compliance_markup::enforce_profiles']))
+              module_profile_list = Array(scope.real.call_function('lookup',
+                [
+                  'compliance_markup::enforce_profiles',
+                  {
+                    'default_value' => []
+                  }
+                ]
+              ))
 
               compliance_profile_to_enforce = global_profile_list + module_profile_list
 
@@ -51,25 +65,47 @@ class Hiera
           end
 
           answer = {}
-          # Loop through all valid compliance profiles and merge them together in
-          # order from first to last
-          #
-          # This needs to be in reverse so that we merge in the correct order
-          Array(compliance_profile_to_enforce).reverse.each do |valid_profile|
-            global_map = scope.real.call_function('lookup', ['compliance_map', { 'merge' => 'deep'}])
-            module_map = scope.real.call_function('lookup', ['compliance_markup::compliance_map', { 'merge' => 'deep' }])
-
-            compliance_map = Backend.merge_answer(
-              global_map, module_map,
-              { :behavior => 'deeper', :knockout_prefix => 'xx' }
+            global_map = scope.real.call_function('lookup',
+              [
+                'compliance_map',
+                {
+                  'merge' => 'deep',
+                  'default_value' => {}
+                }
+              ]
             )
 
+          module_map = scope.real.call_function('lookup',
+            [
+              'compliance_markup::compliance_map',
+              {
+                'merge' => 'deep',
+                'default_value' => {}
+              }
+            ]
+          )
+
+          compliance_map = Backend.merge_answer(
+            global_map, module_map,
+            { :behavior => 'deeper', :knockout_prefix => '--' }
+          )
+
+          # Ensure that we get the most relevant value
+          Array(compliance_profile_to_enforce).each do |valid_profile|
             if compliance_map.is_a?(Hash) && compliance_map[valid_profile]
+
+              # Handle knockouts
+              if (compliance_map[valid_profile]["--#{key}"])
+                answer = nil
+
+                break
+              end
+
               if (compliance_map[valid_profile][key].is_a?(Hash) && compliance_map[valid_profile][key])
-                answer = Backend.merge_answer(
-                  compliance_map[valid_profile], answer,
-                  { :behavior => 'deeper', :knockout_prefix => 'xx' }
-                )
+
+                answer = compliance_map[valid_profile][key]
+
+                break
               end
             end
           end
@@ -80,8 +116,8 @@ class Hiera
 
         throw :no_such_key unless answer
 
-        if answer[key] && answer[key]['value'] && (answer[key]['value'] != '')
-          answer = Backend.parse_answer(answer[key]['value'], scope.real, {}, context)
+        if answer['value'] && (answer['value'] != '')
+          answer = Backend.parse_answer(answer['value'], scope.real, {}, context)
         else
           throw :no_such_key
         end

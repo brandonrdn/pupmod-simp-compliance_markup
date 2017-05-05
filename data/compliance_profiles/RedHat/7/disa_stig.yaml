@@ -2,7 +2,7 @@
 compliance_markup::compliance_map::percent_sign: '%'
 compliance_markup::compliance_map:
   version: 1.0.0
-  disa_stig_el7:
+  disa_stig:
     aide::default_rules:
       identifiers:
         - RHEL-07-021820

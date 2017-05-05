@@ -56,14 +56,31 @@ deploying them into production.
 ### What compliance_markup affects
 
 By default, the `compliance_map()` function creates a set of reports, one per
-node, on your Puppet Server at
-`Puppet[:vardir]/simp/compliance_reports/<fqdn>`.
+node, on your Puppet Server in the *server's* vardir:
+`/opt/puppetlabs/server/data/puppetserver/simp/compliance_reports`.
 
 You may optionally enable the creation of a `File` resource on each of your
 clients if you with to have changes in this data automatically exported into
 `PuppetDB`.
 
 ## Usage
+
+### Selecting Which Profile to Validate Against
+
+If you wish enforce multiple profiles, they should be specified as an Array.
+
+Items at the left side of the Array will override later items.
+
+#### Module Parameter (preferred)
+
+The `compliance_markup::validate_profiles` parameter may be used to cleanly set, and override, the applicable profiles in Hiera (or your ENC).
+
+#### Global Setting
+
+You may enforce one or more profiles in parallel by setting the globally scoped
+variable `$compliance_profile`.
+
+### Activating the Mapper
 
 The `compliance_map()` function provides a mechanism for mapping compliance
 data to settings in Puppet and should be globally activated by `including` the
@@ -101,6 +118,8 @@ would use something like the following:
         - 'CCE-1234'
         'value'      : false
 ```
+
+### Adding One-Off Compliance Entries
 
 Alternatively, you may use the `compliance_map()` function to add compliance
 data to your modules outside of a parameter mapping. This is useful if you have
@@ -172,6 +191,8 @@ should be stored.
 
 A directory will be created for each FQDN that has a report.
 
+**NOTE:** The Puppet **SERVER** must be able to write to this directory!
+
 ## Reference
 
 ### Example 1 - Standard Usage
@@ -233,16 +254,16 @@ values set in the compliance map data structure.
 
 ### Installing the Backend
 
-Though the Puppet server **should** pick the backend up from the module, we
-have seen some issues with this over time and have had to drop the
+The Puppet server **should** automatically pick the backend up from the module.
+
+In some *rare* cases, we have seen this fail and have had to drop the
 `compliance_map_backend.rb` file directly into
 `/opt/puppetlabs/puppet/lib/ruby/vendor_ruby/hiera/backend` and then restart
 the Puppet server.
 
 ### Activating the Backend
 
-The backend is essentially a special YAML backend and can be loaded just like
-any other Hiera backend.
+The backend is loaded like any standard Hiera backend.
 
 The following two examples provide methods by which you may make the values
 authoritative or overridable (recommended).
@@ -279,11 +300,18 @@ authoritative or overridable (recommended).
 
 ### Selecting Which Profile to Enforce
 
+If you wish enforce multiple profiles, they should be specified as an Array.
+
+Items at the left side of the Array will override later items.
+
+#### Module Parameter (preferred)
+
+The `compliance_markup::enforce_profiles` parameter may be used to cleanly set, and override, the applicable profiles in Hiera (or your ENC).
+
+#### Global Setting
+
 You may enforce one or more profiles in parallel by setting the globally scoped
 variable `$enforce_compliance_profile`.
-
-If you enforce multiple profiles, they should be specified as an Array and
-items at the beginning of the Array will override later items.
 
 #### Example 1 - Standard Usage
 
@@ -314,6 +342,7 @@ class foo (
   notify { 'Sample Class': }
 }
 
+# my_policy wins conflicts
 $enforce_compliance_profile = ['my_policy', 'my_less_important_policy']
 
 include '::foo'
