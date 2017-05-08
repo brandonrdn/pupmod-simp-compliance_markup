@@ -1,0 +1,12 @@
+---
+:backends:
+- yaml
+- compliance_map
+:yaml:
+  :datadir: "/data/spec/fixtures/hieradata"
+:compliance_map:
+  :datadir: "/data/spec/fixtures/hieradata"
+:hierarchy:
+- "%{custom_hiera}"
+- "%{module_name}"
+- default

@@ -10,7 +10,7 @@ dist
 !/spec/fixtures/hieradata
 !/spec/fixtures/hieradata/*.yaml
 !/spec/fixtures/site.pp
-/spec/fixtures/hieradata/hiera.yaml
+#/spec/fixtures/hieradata/hiera.yaml
 /.rspec_system
 /.vagrant
 /.bundle
