@@ -4,7 +4,7 @@
 - compliance_map
 :yaml:
   :datadir: "/data/spec/fixtures/hieradata"
-:compliance_map:
+:compliance_map_backend:
   :datadir: "/data/spec/fixtures/hieradata"
 :hierarchy:
 - "%{custom_hiera}"
